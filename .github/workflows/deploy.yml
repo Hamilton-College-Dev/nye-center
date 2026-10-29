@@ -1,0 +1,131 @@
+# Publishes your site every time you push to main.
+#
+# You do not need an AWS account and you will not be given one. This workflow
+# signs in to the hosting platform using a short-lived token that GitHub mints
+# for this repository (OIDC). There are no access keys here, and there should
+# never be any. If you find yourself adding AWS_ACCESS_KEY_ID to this file,
+# stop and ask the web team.
+#
+# The settings it reads (the "vars" below) were filled in for you when this
+# repository was created. Don't hard-code them.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # lets you re-publish by hand from the Actions tab
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required to get the sign-in token. Removing this breaks deploys.
+
+jobs:
+  deploy:
+    name: Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Get the files
+        uses: actions/checkout@v5
+
+      # The templates are repos too, and they will never have the project
+      # settings below. Detect that, so a push to the template builds and
+      # tests itself (useful) instead of failing a deploy it cannot do.
+      - name: Work out whether this is the template or a real project
+        id: mode
+        run: |
+          set -euo pipefail
+          name="${GITHUB_REPOSITORY##*/}"
+          case "$name" in
+            appdeck-template-*)
+              echo "template=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::This is the AppDeck template repository. Building and testing only, nothing is deployed."
+              ;;
+            *)
+              echo "template=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Check the settings are present
+        if: steps.mode.outputs.template != 'true'
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          set -euo pipefail
+          missing=""
+          for name in AWS_DEPLOY_ROLE_ARN AWS_REGION S3_BUCKET CLOUDFRONT_DISTRIBUTION_ID; do
+            [ -n "${!name:-}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::This repository is missing settings:$missing"
+            echo "These are set for you when the project is created."
+            echo "Ask the web team rather than filling them in yourself."
+            exit 1
+          fi
+          echo "All settings present."
+
+      # Catches the most common mistakes (a page that doesn't exist, a
+      # stylesheet linked from the wrong folder) before anything is published.
+      # Catches the most common mistakes (a page that doesn't exist, a
+      # stylesheet linked from the wrong folder) before anything is published.
+      # You can run this yourself: python3 tools/check_links.py
+      - name: Check the pages and links
+        run: python3 tools/check_links.py
+
+      - name: Sign in to the hosting platform
+        if: steps.mode.outputs.template != 'true'
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Images, CSS and fonts get a long cache life, because when you change one
+      # you normally change its name too.
+      - name: Upload images, styles and scripts
+        if: steps.mode.outputs.template != 'true'
+        run: |
+          set -euo pipefail
+          aws s3 sync site/ "s3://${{ vars.S3_BUCKET }}/" \
+            --delete \
+            --exclude "*.html" \
+            --cache-control "public, max-age=31536000, immutable"
+
+      # HTML is uploaded second and told not to cache, so your edits show up as
+      # soon as the invalidation below finishes.
+      - name: Upload pages
+        if: steps.mode.outputs.template != 'true'
+        run: |
+          set -euo pipefail
+          aws s3 sync site/ "s3://${{ vars.S3_BUCKET }}/" \
+            --delete \
+            --exclude "*" \
+            --include "*.html" \
+            --cache-control "public, max-age=0, must-revalidate" \
+            --content-type "text/html; charset=utf-8"
+
+      - name: Clear the cache so visitors see the new version
+        if: steps.mode.outputs.template != 'true'
+        run: |
+          set -euo pipefail
+          id=$(aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/*" \
+            --query 'Invalidation.Id' --output text)
+          echo "Clearing cache ($id). This usually takes under a minute."
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --id "$id"
+          echo "Cache cleared."
+
+      - name: Done
+        if: steps.mode.outputs.template != 'true'
+        run: echo "Published ${{ github.sha }}. Reload your site."
