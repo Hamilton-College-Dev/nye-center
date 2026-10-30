@@ -1,4 +1,4 @@
-# Publishes your site every time you push to main.
+# Builds and publishes the Nye Center admin dashboard on every push to main.
 #
 # You do not need an AWS account and you will not be given one. This workflow
 # signs in to the hosting platform using a short-lived token that GitHub mints
@@ -73,13 +73,44 @@ jobs:
           fi
           echo "All settings present."
 
-      # Catches the most common mistakes (a page that doesn't exist, a
-      # stylesheet linked from the wrong folder) before anything is published.
-      # Catches the most common mistakes (a page that doesn't exist, a
-      # stylesheet linked from the wrong folder) before anything is published.
-      # You can run this yourself: python3 tools/check_links.py
-      - name: Check the pages and links
-        run: python3 tools/check_links.py
+      # The dashboard is a Vite/React app, so it is built before publishing.
+      # The Supabase URL and publishable key are public values (the key is
+      # designed to ship in the browser), set as repository variables. Never
+      # use a service-role key here.
+      - name: Check the Supabase settings are present
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+          missing=""
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
+            [ -n "${!name:-}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository variables:$missing (Settings > Secrets and variables > Actions > Variables)"
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the dashboard
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: npm run build
+
+      # The dashboard uses client-side routes. Serving the app shell as the
+      # error page makes a refresh on /events load the app instead of a 404.
+      - name: Add the single-page-app fallback
+        run: cp apps/admin/dist/index.html apps/admin/dist/404.html
 
       - name: Sign in to the hosting platform
         if: steps.mode.outputs.template != 'true'
@@ -94,7 +125,7 @@ jobs:
         if: steps.mode.outputs.template != 'true'
         run: |
           set -euo pipefail
-          aws s3 sync site/ "s3://${{ vars.S3_BUCKET }}/" \
+          aws s3 sync apps/admin/dist/ "s3://${{ vars.S3_BUCKET }}/" \
             --delete \
             --exclude "*.html" \
             --cache-control "public, max-age=31536000, immutable"
@@ -105,7 +136,7 @@ jobs:
         if: steps.mode.outputs.template != 'true'
         run: |
           set -euo pipefail
-          aws s3 sync site/ "s3://${{ vars.S3_BUCKET }}/" \
+          aws s3 sync apps/admin/dist/ "s3://${{ vars.S3_BUCKET }}/" \
             --delete \
             --exclude "*" \
             --include "*.html" \

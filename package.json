@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "name": "nye-center-admin",
+  "version": "1.0.1",
+  "workspaces": [
+    "apps/admin",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "npm --workspace apps/admin run dev",
+    "build": "npm --workspace apps/admin run build"
+  },
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  }
+}
