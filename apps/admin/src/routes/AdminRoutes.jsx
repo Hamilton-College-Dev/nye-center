@@ -10,6 +10,7 @@ import FAQsPage from '../pages/FAQsPage.jsx';
 import FloorMapsPage from '../pages/FloorMapsPage.jsx';
 import HomeFeaturedPage from '../pages/HomeFeaturedPage.jsx';
 import HomePage from '../pages/HomePage.jsx';
+import InfoPagesPage from '../pages/InfoPagesPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import MapPinsPage from '../pages/MapPinsPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
@@ -34,6 +35,7 @@ export default function AdminRoutes() {
           <Route path="events" element={<EventsPage />} />
           <Route path="events-archived" element={<ArchivedEventsPage />} />
           <Route path="faqs" element={<FAQsPage />} />
+          <Route path="info-pages" element={<InfoPagesPage />} />
           <Route path="archived" element={<ArchivedPage />} />
           <Route path="site-settings" element={<Navigate to="/contact" replace />} />
           <Route path="projects" element={<Navigate to="/archived" replace />} />

@@ -550,6 +550,70 @@ export const contentConfigs = {
       commonPublishedField,
     ],
   },
+  // The three pages behind the app Contact screen's "Information" card. Fixed
+  // rows: editors change the wording and one outside link, never add or remove
+  // a page. No Published switch either — an unpublished page would only fall
+  // back to the app's bundled wording, which reads as the edit being lost.
+  info_pages: {
+    title: 'Information pages',
+    description:
+      'The About, Terms of Use and Privacy Policy pages opened from the Contact screen in the app. Changes appear the next time the app loads.',
+    table: 'info_pages',
+    labelField: 'title',
+    allowCreate: false,
+    allowDelete: false,
+    allowPublishToggle: false,
+    dashboardShowsDrafts: false,
+    columns: ['title', 'slug', 'link_url', 'updated_at'],
+    fields: [
+      {
+        name: 'title',
+        label: 'Title',
+        required: true,
+        group: 'Page',
+        hint: 'The heading at the top of the page.',
+      },
+      {
+        name: 'tagline',
+        label: 'Tagline',
+        group: 'Page',
+        hint: 'About page only: the line shown above the description.',
+      },
+      {
+        name: 'body',
+        label: 'Text',
+        type: 'textarea',
+        rows: 14,
+        required: true,
+        group: 'Page',
+        hint: 'Start a line with "## " to make it a section heading. Leave a blank line between paragraphs.',
+      },
+      {
+        name: 'link_label',
+        label: 'Link text',
+        requires: 'link_url',
+        group: 'Outside link',
+        placeholder: 'Read the full policy',
+        hint: 'Optional. The button text for the link below. Leave blank to show "Learn more".',
+      },
+      {
+        name: 'link_url',
+        label: 'Link URL',
+        type: 'url',
+        group: 'Outside link',
+        placeholder: 'https://www.hamilton.edu/…',
+        hint: 'Optional. One outside site, opened in the browser from a button at the bottom of the page.',
+      },
+      {
+        name: 'slug',
+        label: 'Page',
+        required: true,
+        readOnly: true,
+        group: 'Settings',
+        hint: 'Fixed identifier the app uses to find this page.',
+      },
+    ],
+  },
 };
 
 // The one config not named after its own table: it is the `events` table again,

@@ -179,7 +179,7 @@ export default function DataTable({
                     >
                       Edit
                     </button>
-                    {'is_published' in row ? (
+                    {onTogglePublished && 'is_published' in row ? (
                       <button
                         className="button button-secondary button-table"
                         disabled={actionBusy}
@@ -188,13 +188,15 @@ export default function DataTable({
                         {row.is_published ? 'Unpublish' : 'Publish'}
                       </button>
                     ) : null}
-                    <button
-                      className="button button-danger button-table"
-                      disabled={actionBusy}
-                      onClick={() => onDelete(row)}
-                    >
-                      Delete
-                    </button>
+                    {onDelete ? (
+                      <button
+                        className="button button-danger button-table"
+                        disabled={actionBusy}
+                        onClick={() => onDelete(row)}
+                      >
+                        Delete
+                      </button>
+                    ) : null}
                     <span className="sr-only">{row[labelField]}</span>
                   </td>
                 </tr>

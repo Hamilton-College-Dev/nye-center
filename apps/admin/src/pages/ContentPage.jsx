@@ -446,8 +446,9 @@ export default function ContentPage({
           searchQuery={tableQuery}
           onSearchChange={setTableQuery}
           onEdit={startEdit}
-          onDelete={setDeleteTarget}
-          onTogglePublished={handleTogglePublished}
+          // Fixed sets of rows (e.g. Information pages) turn these off.
+          onDelete={config.allowDelete === false ? null : setDeleteTarget}
+          onTogglePublished={config.allowPublishToggle === false ? null : handleTogglePublished}
           orderField={config.orderField}
           onReorder={config.orderField ? handleReorder : undefined}
           reordering={reordering}
@@ -580,6 +581,13 @@ function validateTypedFields(config, form) {
 
     if (field.type === 'youtube' && !isYouTubeUrl(value)) {
       errors[field.name] = 'Use a full YouTube link (youtube.com/watch?v=… or youtu.be/…).';
+    }
+
+    // `requires`: this field means nothing without another one (link text needs
+    // a link URL), so say so here instead of saving something the app ignores.
+    if (field.requires && !String(form[field.requires] ?? '').trim()) {
+      const other = config.fields.find((candidate) => candidate.name === field.requires);
+      errors[field.name] = `Add a ${other?.label ?? field.requires} too, or clear this field.`;
     }
 
     return errors;

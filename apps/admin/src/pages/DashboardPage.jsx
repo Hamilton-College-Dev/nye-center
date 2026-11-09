@@ -19,6 +19,7 @@ export const TABLE_PATHS = {
   events_archived: '/events-archived',
   faqs: '/faqs',
   contact_settings: '/contact',
+  info_pages: '/info-pages',
 };
 
 export default function DashboardPage() {

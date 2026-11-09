@@ -43,6 +43,8 @@ const groups = [
     links: [
       ['/contact', 'Contact'],
       ['/faqs', 'FAQs'],
+      // The Contact screen's "Information" card: About, Terms, Privacy.
+      ['/info-pages', 'Information pages'],
     ],
   },
   {

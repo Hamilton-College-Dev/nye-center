@@ -81,7 +81,7 @@ export default function FormField({
         <textarea
           id={id}
           name={field.name}
-          rows={field.type === 'json' ? 5 : 4}
+          rows={field.rows ?? (field.type === 'json' ? 5 : 4)}
           value={formatValue(value, field)}
           placeholder={field.placeholder}
           onChange={(event) => onChange(field.name, event.target.value)}
